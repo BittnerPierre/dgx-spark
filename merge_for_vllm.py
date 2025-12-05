@@ -28,7 +28,7 @@ print(f"\n📥 Loading base model: {BASE_MODEL}")
 print(f"📥 Loading LoRA adapters: {LORA_ADAPTERS_PATH}")
 
 # Load base model
-model, tokenizer = FastVisionModel.from_pretrained(
+base_model, tokenizer = FastVisionModel.from_pretrained(
     model_name = BASE_MODEL,
     max_seq_length = 4096,
     load_in_4bit = False,
@@ -36,21 +36,29 @@ model, tokenizer = FastVisionModel.from_pretrained(
 )
 print("✓ Base model loaded")
 
-# Load LoRA adapters
-print(f"\n📦 Loading LoRA adapters...")
+# Load LoRA adapters with PEFT
+print(f"\n📦 Loading LoRA adapters from: {LORA_ADAPTERS_PATH}")
 from peft import PeftModel
-model.load_adapter(LORA_ADAPTERS_PATH)
+
+model = PeftModel.from_pretrained(base_model, LORA_ADAPTERS_PATH)
 print("✓ LoRA adapters loaded")
 
-# Merge to 16bit
-print(f"\n💾 Merging to FP16 for vLLM: {OUTPUT_DIR}")
-print("⏳ This will take a few minutes...")
+# Verify adapters are loaded
+if hasattr(model, 'peft_config'):
+    print(f"✓ Verified: {len(model.peft_config)} adapter(s) loaded")
+else:
+    print("❌ WARNING: No PEFT adapters detected!")
 
-model.save_pretrained_merged(
-    OUTPUT_DIR,
-    tokenizer,
-    save_method = "merged_16bit",
-)
+# Merge adapters with base model
+print(f"\n💾 Merging LoRA adapters with base model...")
+merged_model = model.merge_and_unload()
+print("✓ Merge complete")
+
+# Save merged model
+print(f"\n💾 Saving to: {OUTPUT_DIR}")
+merged_model.save_pretrained(OUTPUT_DIR)
+tokenizer.save_pretrained(OUTPUT_DIR)
+print("✓ Model saved")
 
 print(f"\n✅ Model merged successfully!")
 print(f"📁 Output: /workspace/{OUTPUT_DIR}/")
