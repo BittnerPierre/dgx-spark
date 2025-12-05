@@ -32,7 +32,7 @@ model, tokenizer = FastVisionModel.from_pretrained(
     model_name = BASE_MODEL,
     max_seq_length = 4096,
     load_in_4bit = False,
-    fast_inference = True,
+    # fast_inference = False,  # Not needed for merging
 )
 print("✓ Base model loaded")
 
