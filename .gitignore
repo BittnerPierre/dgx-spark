@@ -1,0 +1,26 @@
+# Modèles et caches
+*.safetensors
+*.bin
+*.gguf
+models/
+outputs/
+unsloth_compiled_cache/
+__pycache__/
+
+# Données
+*.jsonl
+dataset/
+
+# Tokens et secrets
+*.token
+.env
+
+# Python
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Logs
+*.log
+wandb/
