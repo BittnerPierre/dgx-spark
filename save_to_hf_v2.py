@@ -57,7 +57,7 @@ print("\n📥 Downloading to local HF cache (/mnt/models)...")
 cache_dir = snapshot_download(
     repo_id=HF_REPO_NAME,
     token=HF_TOKEN,
-    cache_dir="/mnt/models",
+    cache_dir="/models",
 )
 
 print(f"✓ Model cached at: {cache_dir}")
