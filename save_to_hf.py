@@ -36,17 +36,16 @@ if not os.path.exists(MERGED_MODEL_DIR):
 print(f"\n📁 Loading model from: {MERGED_MODEL_DIR}")
 print(f"🔄 Pushing to: {HF_REPO_NAME}")
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from unsloth import FastVisionModel
+import torch
 
-print("\n⏳ Loading model and tokenizer...")
-model = AutoModelForCausalLM.from_pretrained(
-    MERGED_MODEL_DIR,
-    torch_dtype="auto",
-    device_map="auto",  # Will use GPU if available
+model, tokenizer = FastVisionModel.from_pretrained(
+    model_name=MERGED_MODEL_DIR,
+    max_seq_length=4096,
+    load_in_4bit=False,
 )
-tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_DIR)
 
-print("✓ Model and tokenizer loaded")
+print("✓ Model loaded")
 
 # Push to hub
 print(f"\n🚀 Pushing to HuggingFace Hub: {HF_REPO_NAME}")
