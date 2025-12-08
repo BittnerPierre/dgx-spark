@@ -20,7 +20,7 @@ if not HF_TOKEN:
     exit(1)
 
 # Configuration
-MERGED_MODEL_DIR = "/mnt/models/fine-tuned/ministral_3_sudoku_vllm"
+MERGED_MODEL_DIR = "/models/fine-tuned/ministral_3_sudoku_vllm"
 HF_REPO_NAME = "applied-ai-subscr/ministral_3_sudoku_vllm"
 
 print("=" * 70)
@@ -36,15 +36,15 @@ if not os.path.exists(MERGED_MODEL_DIR):
 print(f"\n📁 Loading model from: {MERGED_MODEL_DIR}")
 print(f"🔄 Pushing to: {HF_REPO_NAME}")
 
-# Load model and tokenizer with Unsloth (same as training script)
-from unsloth import FastVisionModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 print("\n⏳ Loading model and tokenizer...")
-model, tokenizer = FastVisionModel.from_pretrained(
-    model_name=MERGED_MODEL_DIR,
-    max_seq_length=4096,
-    load_in_4bit=False,
+model = AutoModelForCausalLM.from_pretrained(
+    MERGED_MODEL_DIR,
+    torch_dtype="auto",
+    device_map="auto",  # Will use GPU if available
 )
+tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_DIR)
 
 print("✓ Model and tokenizer loaded")
 
