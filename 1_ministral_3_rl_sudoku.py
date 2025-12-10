@@ -594,13 +594,16 @@ _ = model.generate(
     streamer = TextStreamer(tokenizer, skip_prompt = False),
 )
 
+# the following parts are now done in subsequent scripts
+
 # Merge to 16bit
-if True: model.save_pretrained_merged("model", tokenizer, save_method = "merged_16bit",)
-if True: model.push_to_hub_merged("applied-ai-subscr/ministral_3_3B_sudoku_vllm", tokenizer, save_method = "merged_16bit", token = HF_TOKEN)
+if False: model.save_pretrained_merged("model", tokenizer, save_method = "merged_16bit",)
+# set to True to push to huggingface hub
+if False: model.push_to_hub_merged("applied-ai-subscr/ministral_3_3B_sudoku_vllm", tokenizer, save_method = "merged_16bit", token = HF_TOKEN)
 
 # Merge to 4bit
-if True: model.save_pretrained_merged("model", tokenizer, save_method = "merged_4bit",)
-if True: model.push_to_hub_merged("applied-ai-subscr/ministral_3_3B_sudoku_vllm", tokenizer, save_method = "merged_4bit", token = HF_TOKEN)
+if False: model.save_pretrained_merged("model", tokenizer, save_method = "merged_4bit",)
+if False: model.push_to_hub_merged("hf/model", tokenizer, save_method = "merged_4bit", token = HF_TOKEN)
 
 # Just LoRA adapters
 if False:
@@ -610,24 +613,25 @@ if False:
     model.push_to_hub("hf/model", token = HF_TOKEN)
     tokenizer.push_to_hub("hf/model", token = HF_TOKEN)
 
+# below didn't work directly on DGX Spark see other scrips for working solution
 # Save to 8bit Q8_0
 if False: model.save_pretrained_gguf("model", tokenizer,)
 # Remember to go to https://huggingface.co/settings/tokens for a token!
 # And change hf to your username!
-if False: model.push_to_hub_gguf("applied-ai-subscr/ministral_3_3B_sudoku_vllm", tokenizer, token = HF_TOKEN)
+if False: model.push_to_hub_gguf("hf/model", tokenizer, token = HF_TOKEN)
 
 # Save to 16bit GGUF
 if False: model.save_pretrained_gguf("model", tokenizer, quantization_method = "f16")
-if False: model.push_to_hub_gguf("applied-ai-subscr/ministral_3_3B_sudoku_vllm", tokenizer, quantization_method = "f16", token = HF_TOKEN)
+if False: model.push_to_hub_gguf("hf/model", tokenizer, quantization_method = "f16", token = HF_TOKEN)
 
 # Save to q4_k_m GGUF
 if False: model.save_pretrained_gguf("model", tokenizer, quantization_method = "q4_k_m")
-if False: model.push_to_hub_gguf("applied-ai-subscr/ministral_3_3B_sudoku_vllm", tokenizer, quantization_method = "q4_k_m", token = HF_TOKEN)
+if False: model.push_to_hub_gguf("hf/model", tokenizer, quantization_method = "q4_k_m", token = HF_TOKEN)
 
 # Save to multiple GGUF options - much faster if you want multiple!
-if True:
+if False:
     model.push_to_hub_gguf(
-        "applied-ai-subscr/ministral_3_3B_sudoku_vllm", # Change hf to your username!
+        "hf/model", # Change hf to your username!
         tokenizer,
         quantization_method = ["q4_k_m", "q8_0", "q5_k_m","f16",],
         token = HF_TOKEN,

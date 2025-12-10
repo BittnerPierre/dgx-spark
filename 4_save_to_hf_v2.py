@@ -76,7 +76,7 @@ docker run -d \\
   -p 8003:8000 \\
   -e HF_TOKEN={HF_TOKEN} \\
   -v /mnt/models:/root/.cache/huggingface \\
-  nvcr.io/nvidia/vllm:25.09-py3 \\
+  nvcr.io/nvidia/vllm:25.11-py3 \\
   vllm serve {HF_REPO_NAME} \\
     --tokenizer_mode mistral \\
     --config_format mistral \\

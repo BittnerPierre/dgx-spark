@@ -74,7 +74,7 @@ from huggingface_hub import snapshot_download
 cache_dir = snapshot_download(
     repo_id=HF_REPO_NAME,
     token=HF_TOKEN,
-    cache_dir="/mnt/models",  # Your cache directory
+    cache_dir="/models",  # Your cache directory
 )
 
 print(f"✓ Model cached at: {cache_dir}")

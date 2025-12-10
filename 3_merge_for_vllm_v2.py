@@ -96,7 +96,7 @@ docker run -d \\
   --ipc=host \\
   -p 8003:8000 \\
   -v /workspace/{OUTPUT_DIR}:/model \\
-  nvcr.io/nvidia/vllm:25.09-py3 \\
+  nvcr.io/nvidia/vllm:25.11-py3 \\
   vllm serve /model \\
     --tokenizer_mode mistral \\
     --config_format mistral \\
