@@ -1,6 +1,10 @@
-# Ministral-3-3B Sudoku Fine-tuning avec GRPO
+# Ministral-3-3B Sudoku Fine-tuning avec GRPO sur DGX Spark
 
 Ce projet implémente le fine-tuning d'un modèle Ministral-3-3B sur une tâche de résolution de Sudoku en utilisant le **Group Relative Policy Optimization (GRPO)** avec Unsloth, puis l'export au format GGUF pour une inférence optimisée.
+
+Ce projet reprend le [notebook d'Unsloth](<https://colab.research.google.com/github/unslothai/notebooks/blob/main/nb/Ministral_3_(3B)_Reinforcement_Learning_Sudoku_Game.ipynb>)
+
+Voir également la page [Ministral 3](https://docs.unsloth.ai/new/ministral-3) d'unsloth et leur [collection de modèles Ministral 3](https://huggingface.co/collections/unsloth/ministral-3) sur Hugging Face.
 
 ## 📋 Table des matières
 
@@ -18,33 +22,53 @@ Ce projet implémente le fine-tuning d'un modèle Ministral-3-3B sur une tâche 
 ## 🎯 Vue d'ensemble
 
 Ce projet démontre:
+
 - **Fine-tuning GRPO** d'un modèle de langage sur une tâche de raisonnement (Sudoku)
 - **Conversion au format GGUF** pour llama.cpp
-- **Déploiement** avec vLLM ou llama.cpp
-- **Workaround** pour les bugs d'export GGUF d'Unsloth
+- **Déploiement** avec llama.cpp
+- **Workaround** pour les bugs d'export GGUF d'Unsloth sur DGX Spark
 
 ### Modèle de base
+
 - **Modèle**: `unsloth/Ministral-3-3B-Instruct-2512`
 - **Méthode**: GRPO (Group Relative Policy Optimization)
 - **Tâche**: Génération de code Python pour résoudre des puzzles Sudoku
 
 ### Résultats
+
 - Modèle fine-tuné capable de générer des stratégies Sudoku valides
 - Export GGUF réussi (F16, Q8_0)
-- Déploiement réussi sur vLLM et llama.cpp
+- Déploiement réussi sur llama.cpp
 
 ---
 
 ## 🔧 Prérequis
 
 ### Environnement requis
-- **GPU**: NVIDIA avec CUDA (testé sur DGX Spark GB10)
-- **Python**: 3.10+
-- **VRAM**: ~12GB minimum pour le fine-tuning
+
+- **GPU**: NVIDIA avec CUDA (testé sur DGX Spark GB10) `nvidia-smi` affiche un résumé des informations GPU
+- **Python**: 3.12+
+- **GCC**: 13.3.0
+- **CUDA**: 13.0 installé `nvcc --version`
+
+Utilisation du [playbook unsloth](https://build.nvidia.com/spark/unsloth) de NVidia pour le DGX Spark.
+
+Les tests ont été réalisés sur la version `nvcr.io/nvidia/pytorch:25.09-py3` de l'image pytorch de NVidia.
 
 ### Packages Python principaux
+
 ```bash
-pip install unsloth torch transformers trl datasets
+# installation des packages pour unsloth
+pip install peft "datasets==4.3.0" "trl==0.22.2"
+# Install transformers branch for Ministral
+pip install --no-deps bitsandbytes
+pip install --no-deps unsloth unsloth_zoo
+pip install hf_transfer
+
+pip install git+https://github.com/huggingface/transformers.git@bf3f0ae70d0e902efab4b8517fce88f6697636ce
+pip install --no-deps trl==0.22.2
+
+## pour export sur HF
 pip install python-dotenv huggingface-hub
 
 # Pour l'export GGUF (installation manuelle requise)
@@ -54,7 +78,9 @@ pip install protobuf>=6.0.0
 ```
 
 ### Configuration
+
 Créer un fichier `.env` à la racine:
+
 ```bash
 HF_TOKEN=your_huggingface_token_here
 ```
@@ -106,12 +132,14 @@ python 1_ministral_3_rl_sudoku.py
 ```
 
 **Ce script fait**:
+
 - Charge le modèle Ministral-3-3B-Instruct
 - Configure les adaptateurs LoRA (rank 32)
 - Entraîne avec GRPO sur 1000 exemples de Sudoku
 - Sauvegarde les adaptateurs dans `grpo_saved_lora/`
 
 **Outputs**:
+
 - `grpo_saved_lora/` - Adaptateurs LoRA
 - `outputs/` - Checkpoints d'entraînement
 
@@ -126,6 +154,7 @@ python 2_check_lora.py
 ```
 
 **Ce script fait**:
+
 - Vérifie que les tensors LoRA ne sont pas tous à zéro
 - Affiche le pourcentage de zéros par layer
 
@@ -140,6 +169,7 @@ python 3_merge_for_vllm_v2.py
 ```
 
 **Ce script fait**:
+
 - Charge le modèle de base
 - Applique la structure PEFT (même config que le training)
 - Charge les poids des adaptateurs
@@ -147,6 +177,7 @@ python 3_merge_for_vllm_v2.py
 - Sauvegarde le modèle complet
 
 **Configuration**:
+
 ```python
 BASE_MODEL = "unsloth/Ministral-3-3B-Instruct-2512"
 LORA_ADAPTERS_PATH = "grpo_saved_lora"
@@ -168,11 +199,13 @@ python 4_save_to_hf_v2.py
 ```
 
 **Ce script fait**:
+
 - Charge le modèle mergé depuis le disque
 - Push vers HuggingFace Hub
 - Télécharge dans le cache local pour vLLM
 
 **Configuration**:
+
 ```python
 MERGED_MODEL_DIR = "/models/fine-tuned/ministral_3_sudoku_vllm"
 HF_REPO_NAME = "applied-ai-subscr/ministral_3_sudoku_vllm"
@@ -197,6 +230,7 @@ python 5_export_gguf_v2.py
 ```
 
 **Ce script fait**:
+
 - **Utilise directement** `llama.cpp/convert_hf_to_gguf.py`
 - **Bypass Unsloth** (qui plante sur l'export GGUF)
 - Génère plusieurs quantizations:
@@ -204,6 +238,7 @@ python 5_export_gguf_v2.py
   - **Q8_0**: 3.5 GB (qualité excellente)
 
 **Configuration**:
+
 ```python
 MODEL_DIR = "/workspace/model"
 OUTPUT_DIR = "/workspace/model_gguf"
@@ -223,11 +258,13 @@ python 6_push_gguf_to_hf.py
 ```
 
 **Ce script fait**:
+
 - Upload les fichiers GGUF vers HuggingFace Hub
 - Génère un README.md pour le repo GGUF
 - Affiche l'URL du modèle
 
 **Configuration**:
+
 ```python
 GGUF_DIR = "/workspace/model_gguf"
 HF_REPO = "applied-ai-subscr/ministral_3_3B_sudoku_gguf"
@@ -240,9 +277,11 @@ HF_REPO = "applied-ai-subscr/ministral_3_3B_sudoku_gguf"
 ## 📁 Scripts principaux
 
 ### `1_ministral_3_rl_sudoku.py`
+
 **Rôle**: Fine-tuning GRPO principal
 
 **Fonctionnalités clés**:
+
 - Implémentation du jeu Sudoku (`SudokuGame` class)
 - Génération de puzzles aléatoires
 - Reward functions pour GRPO:
@@ -252,6 +291,7 @@ HF_REPO = "applied-ai-subscr/ministral_3_3B_sudoku_gguf"
 - Trainer GRPO avec 200 steps
 
 **Hyperparamètres**:
+
 ```python
 max_seq_length = 4096
 lora_rank = 32
@@ -264,9 +304,11 @@ max_steps = 200
 ---
 
 ### `3_merge_for_vllm_v2.py`
+
 **Rôle**: Merge LoRA + Base model
 
 **Important**: Utilise la méthode Unsloth pour garantir la compatibilité:
+
 1. Charge base model avec `FastVisionModel.from_pretrained()`
 2. Applique structure PEFT avec `FastVisionModel.get_peft_model()`
 3. Charge les poids LoRA depuis safetensors
@@ -275,19 +317,23 @@ max_steps = 200
 ---
 
 ### `5_export_gguf_v2.py` ⭐ **WORKAROUND**
+
 **Rôle**: Conversion GGUF (contournement du bug Unsloth)
 
 **Contexte du workaround**:
+
 1. Unsloth télécharge automatiquement llama.cpp
 2. La fonction `model.push_to_hub_gguf()` d'Unsloth **plante**
 3. Solution: Utiliser directement `convert_hf_to_gguf.py` de llama.cpp
 
 **Dépendances requises** (à installer manuellement):
+
 ```bash
 pip install gguf sentencepiece protobuf
 ```
 
 **Pourquoi ça marche**:
+
 - Conversion directe depuis safetensors (pas de GPU nécessaire)
 - Plus rapide que la méthode Unsloth
 - Script officiel maintenu par llama.cpp
@@ -300,6 +346,7 @@ pip install gguf sentencepiece protobuf
 ### Problème: Export GGUF via Unsloth plante
 
 **Symptôme**:
+
 ```python
 # Dans ministral_3_rl_sudoku.py (lignes 628-633)
 model.push_to_hub_gguf(...)  # ❌ Plante
@@ -321,11 +368,11 @@ subprocess.run([
 
 ### Packages installés manuellement
 
-| Package | Version | Pourquoi |
-|---------|---------|----------|
-| `gguf` | 0.17.1 | Format GGUF (requis par convert_hf_to_gguf.py) |
-| `sentencepiece` | 0.2.1 | Tokenizer Mistral/Ministral |
-| `protobuf` | 6.32.0 | Sérialization des données |
+| Package         | Version | Pourquoi                                       |
+| --------------- | ------- | ---------------------------------------------- |
+| `gguf`          | 0.17.1  | Format GGUF (requis par convert_hf_to_gguf.py) |
+| `sentencepiece` | 0.2.1   | Tokenizer Mistral/Ministral                    |
+| `protobuf`      | 6.32.0  | Sérialization des données                      |
 
 ### llama.cpp téléchargé par Unsloth
 
@@ -335,7 +382,45 @@ Quand vous exécutez `1_ministral_3_rl_sudoku.py`, Unsloth télécharge automati
 
 ## 🚀 Déploiement
 
-### Option 1: vLLM (recommandé pour production)
+Actuellement seul llama.cpp semble pouvoir faire fonctionner le modèle fine-tuné sur le DGX Spark.
+Ministral 3 unsloth requiert vllm 0.12 qui n'est actuellement pas disponible dans les images officielles de NVidia.
+
+---
+
+### Option 1: llama.cpp (plus léger)
+
+llama.cpp a été téléchargé depuis githb
+
+```bash
+git clone https://github.com/ggml-org/llama.cpp.git
+cd llama.cpp/
+cmake -B build-cuda -DGGML_CUDA=ON
+cmake --build build-cuda -j
+```
+
+```bash
+# Lancer le serveur
+./build/bin/llama-server \
+  -m /workspace/model_gguf/ministral-3-3b-sudoku-q8_0.gguf \
+  -c 4096 \
+  -ngl 99 \
+  --port 8080
+```
+
+**Test**:
+
+```bash
+curl http://localhost:8080/completion \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Create a Sudoku solving strategy...",
+    "n_predict": 512
+  }'
+```
+
+### Option 2: vLLM (recommandé pour production)
+
+La commande est donné à titre d'information, l'image actuelle de NVidia contenant vllm 0.11 ne permet pas d'inférer le modele Ministral 3 fine-tuné par Unsloth (KeyError: minstral3).
 
 ```bash
 docker run -d \
@@ -344,7 +429,7 @@ docker run -d \
   --ipc=host \
   -p 8003:8000 \
   -v /workspace/ministral_3_sudoku_vllm:/model \
-  nvcr.io/nvidia/vllm:25.09-py3 \
+  nvcr.io/nvidia/vllm:25.11-py3 \
   vllm serve /model \
     --tokenizer_mode mistral \
     --config_format mistral \
@@ -353,42 +438,14 @@ docker run -d \
 ```
 
 **Test**:
+
 ```bash
 curl http://localhost:8003/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/model",
     "prompt": "Create a Sudoku solving strategy...",
-    "max_tokens": 512,
-    "temperature": 0.7
-  }'
-```
-
----
-
-### Option 2: llama.cpp (plus léger)
-
-```bash
-cd /workspace/llama.cpp
-
-# Compiler (si nécessaire)
-make -j$(nproc)
-
-# Lancer le serveur
-./llama-server \
-  -m /workspace/model_gguf/ministral-3-3b-sudoku-q8_0.gguf \
-  -c 4096 \
-  -ngl 99 \
-  --port 8080
-```
-
-**Test**:
-```bash
-curl http://localhost:8080/completion \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Create a Sudoku solving strategy...",
-    "n_predict": 512
+    "temperature": 0.15
   }'
 ```
 
@@ -433,18 +490,19 @@ curl http://localhost:8080/completion \
 
 ## 📊 Comparaison des formats
 
-| Format | Taille | Qualité | Vitesse | Usage |
-|--------|--------|---------|---------|-------|
-| **16bit merged** | ~6 GB | 100% | Rapide | vLLM production |
-| **GGUF F16** | 6.4 GB | 100% | Rapide | llama.cpp qualité max |
-| **GGUF Q8_0** | 3.5 GB | 99% | Très rapide | llama.cpp recommandé |
-| **GGUF Q4_K_M** | ~2 GB | 95% | Rapide | llama.cpp léger |
+| Format           | Taille | Qualité | Vitesse     | Usage                 |
+| ---------------- | ------ | ------- | ----------- | --------------------- |
+| **16bit merged** | ~6 GB  | 100%    | Rapide      | vLLM production       |
+| **GGUF F16**     | 6.4 GB | 100%    | Rapide      | llama.cpp qualité max |
+| **GGUF Q8_0**    | 3.5 GB | 99%     | Très rapide | llama.cpp recommandé  |
+| **GGUF Q4_K_M**  | ~2 GB  | 95%     | Rapide      | llama.cpp léger       |
 
 ---
 
 ## 🤝 Contributions
 
 Ce projet utilise:
+
 - **Unsloth**: Fine-tuning et merge ([unsloth.ai](https://unsloth.ai))
 - **llama.cpp**: Conversion GGUF ([ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp))
 - **TRL**: GRPO Trainer ([huggingface/trl](https://github.com/huggingface/trl))
@@ -455,14 +513,16 @@ Ce projet utilise:
 ## 📝 Notes importantes
 
 ### ⚠️ Ne pas utiliser les fichiers dans `deprecated/`
+
 Ces scripts sont des versions antérieures qui:
+
 - Utilisaient l'export GGUF d'Unsloth (qui plante)
-- Avaient des chemins incorrects
 - Sont remplacés par les versions v2
 
 ### ✅ Workflow recommandé minimal
 
 Pour un workflow complet minimal:
+
 ```bash
 # 1. Fine-tuning + training
 python 1_ministral_3_rl_sudoku.py
@@ -478,18 +538,25 @@ python 4_save_to_hf_v2.py
 python 6_push_gguf_to_hf.py
 ```
 
+### test des stratégies
+
+Le script `test_sudoku_strategy.py` vous permets de tester simplement les stratégies produites par le modèles. Vous pouvez trouver une version plus complète sur le notebook d'unsloth.
+
 ### 🐛 Troubleshooting
 
 **Erreur "gguf module not found"**:
+
 ```bash
 pip install gguf sentencepiece protobuf
 ```
 
 **Erreur lors de l'export GGUF**:
+
 - Vérifier que `/workspace/llama.cpp/convert_hf_to_gguf.py` existe
 - Vérifier que le modèle mergé existe dans `MODEL_DIR`
 
 **CUDA out of memory**:
+
 - Réduire `per_device_train_batch_size` dans step 1
 - Utiliser `load_in_4bit=True` pour le training
 
@@ -498,6 +565,7 @@ pip install gguf sentencepiece protobuf
 ## 📄 License
 
 Ce projet est basé sur:
+
 - Unsloth (Apache 2.0)
 - llama.cpp (MIT)
 - Ministral-3 (Apache 2.0)
@@ -507,6 +575,7 @@ Ce projet est basé sur:
 ## 🎉 Résultats
 
 Modèles disponibles sur HuggingFace:
+
 - **Modèle mergé 16bit**: `applied-ai-subscr/ministral_3_sudoku_vllm`
 - **Fichiers GGUF**: `applied-ai-subscr/ministral_3_3B_sudoku_gguf`
 
